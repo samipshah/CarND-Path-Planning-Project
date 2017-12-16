@@ -119,7 +119,6 @@ Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const
 			}
 			ref_theta = a_car.m_theta;
 			if(a_prev_path.m_x.size() < 2) {
-				
 				hx.push_back(a_car.m_mapx - cos(ref_theta));
 				hy.push_back(a_car.m_mapy - sin(ref_theta));
 				

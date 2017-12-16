@@ -12,6 +12,10 @@ using namespace std;
 
 
 double Brain::_cost(Path& a, const vector<Car>& other_cars) {
+    // very high cost where collision occurs
+    // if the car is path is way too close to any of the other cars predicted locations
+    // associate very high cost
+    // low cost where maximum speed is
     if(a.remaining_points() != a.m_max_points) {
         return 0.0;
     }
@@ -19,6 +23,7 @@ double Brain::_cost(Path& a, const vector<Car>& other_cars) {
 }
 
 Path Brain::next_path(Car& a_car, vector<Car>& other_cars, Planner& a_planner, const Path& prev_path) {
+    // predict next locations of other cars 
     // possible transitions
     vector<Path> l_possible_paths = a_planner.get_trajectories(m_current_state, a_car, other_cars, prev_path);
 
