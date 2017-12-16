@@ -1,7 +1,6 @@
 #ifndef CAR_HPP
 #define CAR_HPP
-
-#include <math.h>
+#include <cmath>
 
 struct Car {
     // int m_right_max;
@@ -38,6 +37,12 @@ struct Car {
     };
 
     bool same_lane(const Car& b);
+
+    void update_location(double timestep) {
+        // m_mapx += m_vx*timestep;
+        // m_mapy += m_vy*timestep;
+        m_s += current_speed()*timestep;
+    }
 
 };
 

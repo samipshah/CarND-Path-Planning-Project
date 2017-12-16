@@ -58,22 +58,22 @@ double distance(double x1, double y1, double x2, double y2)
 }
 
 
-vector<double> _get_lane_velocities(const vector<Car>& a_other_cars) {
-	vector<double> lane_velocities = vector<double>(3);
-	vector<int> count = vector<int>(3);
-	for(Car a : a_other_cars) {
-		unsigned int lane = get_lane(a);	
-		lane_velocities[lane] += vector_mag(a.m_vx, a.m_vy);
-		count[lane] += 1;
-	}
+// vector<double> _get_lane_velocities(const vector<Car>& a_other_cars) {
+// 	vector<double> lane_velocities = vector<double>(3);
+// 	vector<int> count = vector<int>(3);
+// 	for(Car a : a_other_cars) {
+// 		unsigned int lane = get_lane(a);	
+// 		lane_velocities[lane] += vector_mag(a.m_vx, a.m_vy);
+// 		count[lane] += 1;
+// 	}
 
-	for(int i=0; i < 3; i++) {
-		lane_velocities[i] /= count[i];
-	}
-	return lane_velocities;
-}
+// 	for(int i=0; i < 3; i++) {
+// 		lane_velocities[i] /= count[i];
+// 	}
+// 	return lane_velocities;
+// }
 
-Car _get_next_car_in_lane(const Car& a_car, const vector<Car>& a_other_cars, int lane) {
+Car get_next_car_in_lane(const Car& a_car, const vector<Car>& a_other_cars, int lane) {
 	double s_dist = 10000.0; // really large number
 	Car next_car;
 	for(Car a : a_other_cars) {
@@ -90,66 +90,100 @@ Car _get_next_car_in_lane(const Car& a_car, const vector<Car>& a_other_cars, int
 
 double Planner::_get_ref_velocity(double cur, double desired) {
 	if(desired > cur) {
-		cur += (m_max_acc*.9*m_dt); // 80% of acceleration
+		cur += (m_max_acc*.9*s_dt); // 80% of acceleration
 	} else {
-		cur -= (m_max_acc*.9*m_dt);
+		cur -= (m_max_acc*.9*s_dt);
 	}
 
-	if (cur > m_ref_v) {
-		cur = m_ref_v;
+	if (cur > s_ref_v) {
+		cur = s_ref_v;
 	}
 	return cur;
 }
 
-Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const vector<Car>& a_other_cars, const Path& a_prev_path) {
+Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, double max_v, const Path& a_prev_path) {
     // logic required for generating trajectories for given state and remaining points.
     Path next_path;
-	double ref_vel, ref_theta, cur_vel;
-	
-	ref_vel = m_ref_v;
+	double cur_vel;
+	double ref_theta = a_car.m_theta;
 	vector<double> hx,hy; // helper xy
-    switch(a_state) {
+
+	// first two points are common in any state
+	if(a_prev_path.m_x.size() < 2) {
+		hx.push_back(a_car.m_mapx - cos(ref_theta));
+		hy.push_back(a_car.m_mapy - sin(ref_theta));
+		
+		hx.push_back(a_car.m_mapx);
+		hy.push_back(a_car.m_mapy);
+		cur_vel = vector_mag(a_car.m_vx, a_car.m_vy);
+		next_path.m_current_velocity = cur_vel;
+	} else {
+		unsigned int len = a_prev_path.m_x.size();
+		double x = a_prev_path.m_x[len-1];
+		double y = a_prev_path.m_y[len-1];
+		
+		double x1 = a_prev_path.m_x[len-2];
+		double y1 = a_prev_path.m_y[len-2];
+		ref_theta = atan2(y-y1,x-x1);
+		cur_vel = distance(x,y,x1,y1) / s_dt;
+		next_path.m_current_velocity = cur_vel;
+
+		hx.push_back(x1);
+		hy.push_back(y1);
+
+		hx.push_back(x);
+		hy.push_back(y);
+	}
+
+	// set current and target lane
+	double c_lane = get_lane(a_car);
+	next_path.m_current_lane = c_lane;
+	next_path.m_target_lane = c_lane;
+    switch(next_state) {
         case CarState::KEEP_LANE: {
-			Car next_car = _get_next_car_in_lane(a_car, a_other_cars, get_lane(a_car));
-			ref_vel = m_ref_v;
-			if(fabs(next_car.m_id - (-2)) > std::numeric_limits<double>::epsilon()) {
-				if (fabs(a_car.m_s - next_car.m_s) < 50.0) {
-					ref_vel = vector_mag(next_car.m_vx, next_car.m_vy);
-				}
-			}
-			ref_theta = a_car.m_theta;
-			if(a_prev_path.m_x.size() < 2) {
-				hx.push_back(a_car.m_mapx - cos(ref_theta));
-				hy.push_back(a_car.m_mapy - sin(ref_theta));
-				
-				hx.push_back(a_car.m_mapx);
-				hy.push_back(a_car.m_mapy);
-				cur_vel = vector_mag(a_car.m_vx, a_car.m_vy);
-			} else {
-				unsigned int len = a_prev_path.m_x.size();
-				double x = a_prev_path.m_x[len-1];
-				double y = a_prev_path.m_y[len-1];
-				
-				double x1 = a_prev_path.m_x[len-2];
-				double y1 = a_prev_path.m_y[len-2];
-				ref_theta = atan2(y-y1,x-x1);
-				cur_vel = distance(x,y,x1,y1) / m_dt;
-
-				hx.push_back(x1);
-				hy.push_back(y1);
-
-				hx.push_back(x);
-				hy.push_back(y);
-			}
+			// set reference velocity
 
 			double ref_s = a_car.m_s;
 			double ref_d = get_middle_of_lane(get_lane(a_car));
+			for(int i=1; i < 4; i++) {
+				auto xy = getXY(ref_s+(s_spline_step*i), ref_d);
+				hx.push_back(xy[0]);
+				hy.push_back(xy[1]);
+			}
+
+        } break;
+		case CarState::TAKE_LEFT: {
+			// current , target lanes
+			if(c_lane <= 0) {
+				return next_path;
+			}
+			double t_lane = c_lane - 1;
+			next_path.m_target_lane = t_lane;
+
+			double ref_s = a_car.m_s;
+			double ref_d = get_middle_of_lane(t_lane);
 			for(int i=1; i < 4; i++) {
 				auto xy = getXY(ref_s+(30*i), ref_d);
 				hx.push_back(xy[0]);
 				hy.push_back(xy[1]);
 			}
-        } break;
+		} break;
+		case CarState::TAKE_RIGHT: {
+			// current , target lanes
+			if(c_lane >= (m_lanes-1)) {
+				return next_path;
+			}
+			double t_lane = c_lane + 1;
+			next_path.m_target_lane = t_lane;
+
+			double ref_s = a_car.m_s;
+			double ref_d = get_middle_of_lane(t_lane);
+			for(int i=1; i < 4; i++) {
+				auto xy = getXY(ref_s+(30*i), ref_d);
+				hx.push_back(xy[0]);
+				hy.push_back(xy[1]);
+			}
+		} break;
         default: {
             return next_path;
         }
@@ -187,10 +221,11 @@ Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const
 	double ref_x, ref_y;
 
 	for(int i=0; i < remaining; i++) {
-		cur_vel = _get_ref_velocity(cur_vel, ref_vel);
+		cur_vel = _get_ref_velocity(cur_vel, max_v);
+		next_path.m_current_velocity = cur_vel;
 		assert(cur_vel > 0);
-		assert(cur_vel <= m_ref_v);
-		double N = target_dist/(m_dt*cur_vel);
+		assert(cur_vel <= s_ref_v);
+		double N = target_dist/(s_dt*cur_vel);
 		double x_point = x_add_on + (target_x/N);
 		double y_point = s(x_point);
 		x_add_on = x_point;
@@ -205,19 +240,11 @@ Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const
 
 vector<Planner::CarState> Planner::_possible_transitions(Planner::CarState a_current_state) {
     if(a_current_state == CarState::KEEP_LANE) {
-        return {CarState::KEEP_LANE, CarState::PREPARE_LEFT, CarState::PREPARE_RIGHT};
-    }
-
-    if(a_current_state == CarState::PREPARE_LEFT) {
-        return {CarState::PREPARE_LEFT, CarState::TAKE_LEFT};
+        return {CarState::KEEP_LANE, CarState::TAKE_RIGHT, CarState::TAKE_LEFT};
     }
 
     if(a_current_state == CarState::TAKE_LEFT) {
         return {CarState::KEEP_LANE, CarState::TAKE_LEFT};
-    }
-
-    if(a_current_state == CarState::PREPARE_RIGHT) {
-        return {CarState::PREPARE_RIGHT, CarState::TAKE_RIGHT};
     }
 
     if(a_current_state == CarState::TAKE_RIGHT) {
@@ -227,20 +254,39 @@ vector<Planner::CarState> Planner::_possible_transitions(Planner::CarState a_cur
     return {};
 }
 
-
-vector<Path> Planner::get_trajectories(Planner::CarState a_state, const Car& a_car, const vector<Car>& a_other_cars, const Path& a_prev_path) {
+double _get_next_car_velocity(const Car& a_car, const vector<Car>& a_other_cars, unsigned int lane) {
+	double max_v = Planner::s_ref_v;
+	Car next_car = get_next_car_in_lane(a_car, a_other_cars, lane);
+	if(fabs(next_car.m_id - (-2)) > std::numeric_limits<double>::epsilon()) {
+		if (fabs(a_car.m_s - next_car.m_s) < 50.0) {
+			max_v = vector_mag(next_car.m_vx, next_car.m_vy);
+		}
+	}
+	return max_v;
+}
+vector<std::pair<Planner::CarState,Path>> Planner::get_trajectories(Planner::CarState a_state, const Car& a_car, const vector<Car>& a_other_cars, const Path& a_prev_path) {
     vector<CarState> l_states = _possible_transitions(a_state);
-    vector<Path> l_possible_paths;
-    for(Planner::CarState state : l_states) {
-        Path a = _get_trajectory(state, a_car, a_other_cars, a_prev_path);
-        l_possible_paths.push_back(a);
-    }
-
+    vector<std::pair<CarState,Path>> l_possible_paths;
+	
+	double max_v = _get_next_car_velocity(a_car, a_other_cars, get_lane(a_car));
+	if(a_state == CarState::KEEP_LANE && max_v >= s_ref_v) {
+        Path a = _get_trajectory(CarState::KEEP_LANE, a_car, max_v, a_prev_path);
+		double t_vel = _get_next_car_velocity(a_car, a_other_cars, a.m_target_lane);
+		a.m_target_velocity = (t_vel < Planner::s_ref_v) ? t_vel : Planner::s_ref_v;
+        l_possible_paths.push_back(std::pair<CarState,Path>(CarState::KEEP_LANE, a));
+	} else {
+		for(Planner::CarState state : l_states) {
+			Path a = _get_trajectory(state, a_car, max_v, a_prev_path);
+			double t_vel = _get_next_car_velocity(a_car, a_other_cars, a.m_target_lane);
+			a.m_target_velocity = (t_vel < Planner::s_ref_v) ? t_vel : Planner::s_ref_v;
+			l_possible_paths.push_back(std::pair<CarState,Path>(state, a));
+		}
+	}
     return l_possible_paths;
 }
 
 
-int Planner::ClosestWaypoint(double x, double y) {
+int Planner::ClosestWaypoint(double x, double y) const {
 	double closestLen = 100000; //large number
 	int closestWaypoint = 0;
 
@@ -257,7 +303,7 @@ int Planner::ClosestWaypoint(double x, double y) {
 	return closestWaypoint;
 }
 
-int Planner::NextWaypoint(double x, double y, double theta) {
+int Planner::NextWaypoint(double x, double y, double theta) const {
 	int closestWaypoint = ClosestWaypoint(x,y);
 
 	double map_x = m_maps_x[closestWaypoint];
@@ -279,7 +325,7 @@ int Planner::NextWaypoint(double x, double y, double theta) {
 }
 
 // Transform from Cartesian x,y coordinates to Frenet s,d coordinates
-vector<double> Planner::getFrenet(double x, double y, double theta)
+vector<double> Planner::getFrenet(double x, double y, double theta) const
 {
 	int next_wp = NextWaypoint(x,y,theta);
 
@@ -327,8 +373,7 @@ vector<double> Planner::getFrenet(double x, double y, double theta)
 }
 
 // Transform from Frenet s,d coordinates to Cartesian x,y
-vector<double> Planner::getXY(double s, double d)
-{
+vector<double> Planner::getXY(double s, double d) const {
 	int prev_wp = -1;
 
 	while(s > m_maps_s[prev_wp+1] && (prev_wp < (int)(m_maps_s.size()-1) ))

@@ -12,7 +12,7 @@ public:
     Planner::CarState m_current_state = Planner::CarState::KEEP_LANE;
     Path next_path(Car& car, std::vector<Car>& other_cars, Planner& planner, const Path& prev_path);
 private:
-    double _cost(Path& a, const std::vector<Car>& other_cars);
+    double _cost(Path& a, const std::vector<Car>& other_cars, const Planner& p);
 };
 
 #endif /* BRAIN_HPP */

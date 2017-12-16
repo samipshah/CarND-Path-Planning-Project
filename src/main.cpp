@@ -124,9 +124,6 @@ int main() {
 						vector<Car> other_cars;
 						for(int i =0; i < sensor_fusion.size(); i++) {
 							if(sensor_fusion[i][6] < 0 || sensor_fusion[i][6] > 12) {
-								cout << "Skipped" << endl;
-								cout << sensor_fusion[i][0] << "," << sensor_fusion[i][1] << "," << sensor_fusion[i][2] << "," << sensor_fusion[i][3] 
-								<< "," << sensor_fusion[i][4] << "," << sensor_fusion[i][5] << "," << sensor_fusion[i][6] << endl;
 								continue;
 							}
 							other_cars.emplace_back(sensor_fusion[i][0], sensor_fusion[i][1], sensor_fusion[i][2], sensor_fusion[i][3], sensor_fusion[i][4], sensor_fusion[i][5], sensor_fusion[i][6]);
@@ -160,9 +157,9 @@ int main() {
 						// 	next_y_vals.push_back(xy[1]);
 						// }
 
-						for(int i=0; i < path.m_x.size(); i++) {
-							cout << "x:" << path.m_x[i] << ",y:" << path.m_y[i] << endl;
-						}
+						// for(int i=0; i < path.m_x.size(); i++) {
+						// 	cout << "x:" << path.m_x[i] << ",y:" << path.m_y[i] << endl;
+						// }
 
 						// use spline here
 

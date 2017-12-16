@@ -4,24 +4,20 @@
 #include <vector>
 
 struct Path {
-    unsigned int m_max_points = 50;
-    // std::vector<double> m_prev_x;
-    // std::vector<double> m_prev_y;
-
+    static constexpr const unsigned int s_max_points = 50;
     std::vector<double> m_x;
     std::vector<double> m_y;
 
+    unsigned int m_current_lane;
+    double m_current_velocity;
+    unsigned int m_target_lane;
+    double m_target_velocity;
+
     Path(const std::vector<double>& prev_x, const std::vector<double>& prev_y): m_x(prev_x), m_y(prev_y){}
-    Path(const Path& a) {
-        // m_prev_x = a.m_prev_x;
-        // m_prev_y = a.m_prev_y;
-        m_x = a.m_x;
-        m_y = a.m_y;
-    }
     Path() {}
 
-    unsigned int remaining_points();
-    unsigned int length();
+    unsigned int const remaining_points();
+    unsigned int length() const;
 };
 
 #endif /* PATH_HPP */
