@@ -114,7 +114,7 @@ int main() {
           	double end_path_d = j[1]["end_path_d"];
 
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
-          	auto sensor_fusion = j[1]["sensor_fusion"];
+          	vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
 
           	json msgJson;
 
@@ -122,8 +122,14 @@ int main() {
           	vector<double> next_y_vals;
 
 						vector<Car> other_cars;
-						for(auto car : sensor_fusion) {
-							other_cars.emplace_back(car[0], car[1], car[2], car[3], car[4], car[5], car[6]);
+						for(int i =0; i < sensor_fusion.size(); i++) {
+							if(sensor_fusion[i][6] < 0 || sensor_fusion[i][6] > 12) {
+								cout << "Skipped" << endl;
+								cout << sensor_fusion[i][0] << "," << sensor_fusion[i][1] << "," << sensor_fusion[i][2] << "," << sensor_fusion[i][3] 
+								<< "," << sensor_fusion[i][4] << "," << sensor_fusion[i][5] << "," << sensor_fusion[i][6] << endl;
+								continue;
+							}
+							other_cars.emplace_back(sensor_fusion[i][0], sensor_fusion[i][1], sensor_fusion[i][2], sensor_fusion[i][3], sensor_fusion[i][4], sensor_fusion[i][5], sensor_fusion[i][6]);
 						}
 
 						// vector<double> previous_path_s;

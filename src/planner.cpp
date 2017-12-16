@@ -3,23 +3,120 @@
 #include <src/common.hpp>
 #include <iostream>
 #include <src/spline.h>
+#include <src/road.hpp>
 
 using namespace std;
+
+struct AM {
+	const double x;
+	const double y;
+	const double theta;
+	AM(double x, double y, double theta) : x(x), y(y), theta(theta) {}
+
+	vector<double> convert(vector<double> a);
+	vector<double> inverse_convert(vector<double> a);
+};
+
+vector<double> AM::convert(vector<double> a) {
+	double l_x = a[0] - x;
+	double l_y = a[1] - y;
+
+	/// ?????
+	return {(l_x*cos(-theta) - l_y*sin(-theta)), (l_x*(sin(-theta))+l_y*cos(-theta))};
+}
+
+vector<double> AM::inverse_convert(vector<double> a) {
+	double l_x = a[0]; 
+	double l_y = a[1];
+	/// ???
+	return { (l_x*cos(theta) - l_y*sin(theta) + x), (l_x*sin(theta) + l_y*cos(theta) + y)};
+}
+
+double vector_mag(double x, double y) {
+	return sqrt(x*x + y*y);
+}
+
+// vector<double> shift_rotate(vector<double> a, const axis_modification& b) {
+// 	// shift
+// 	double x = a[0] - b.x;
+// 	double y = a[1] - b.y;
+// 	// rotate
+// 	return { x*cos(b.theta) + y*sin(b.theta), - x*sin(b.theta) + y*cos(b.theta) };
+// }
+
+// vector<double> rotate_shift(vector<double> a, const axis_modification& b) {
+// 	// rotate
+// 	double x = a[0]*cos(b.theta) - a[1]*sin(b.theta);
+// 	double y = a[0]*sin(b.theta) + a[1]*cos(b.theta); 
+// 	// shift 
+// 	return { x + b.x, y + b.y };
+// }
 
 double distance(double x1, double y1, double x2, double y2)
 {
 	return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
 }
 
+
+vector<double> _get_lane_velocities(const vector<Car>& a_other_cars) {
+	vector<double> lane_velocities = vector<double>(3);
+	vector<int> count = vector<int>(3);
+	for(Car a : a_other_cars) {
+		unsigned int lane = get_lane(a);	
+		lane_velocities[lane] += vector_mag(a.m_vx, a.m_vy);
+		count[lane] += 1;
+	}
+
+	for(int i=0; i < 3; i++) {
+		lane_velocities[i] /= count[i];
+	}
+	return lane_velocities;
+}
+
+Car _get_next_car_in_lane(const Car& a_car, const vector<Car>& a_other_cars, int lane) {
+	double s_dist = 10000.0; // really large number
+	Car next_car;
+	for(Car a : a_other_cars) {
+		if(get_lane(a) == lane) {
+			double diff = a.m_s - a_car.m_s;
+			if(diff > 0 && diff < s_dist) {
+				s_dist = diff;
+				next_car = a;
+			}
+		}
+	}
+	return next_car;
+}
+
+double Planner::_get_ref_velocity(double cur, double desired) {
+	if(desired > cur) {
+		cur += (m_max_acc*.9*m_dt); // 80% of acceleration
+	} else {
+		cur -= (m_max_acc*.9*m_dt);
+	}
+
+	if (cur > m_ref_v) {
+		cur = m_ref_v;
+	}
+	return cur;
+}
+
 Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const vector<Car>& a_other_cars, const Path& a_prev_path) {
     // logic required for generating trajectories for given state and remaining points.
     Path next_path;
-	double ref_vel, ref_theta;
+	double ref_vel, ref_theta, cur_vel;
+	
 	ref_vel = m_ref_v;
-	// vector<double> svals,dvals;
 	vector<double> hx,hy; // helper xy
     switch(a_state) {
         case CarState::KEEP_LANE: {
+			Car next_car = _get_next_car_in_lane(a_car, a_other_cars, get_lane(a_car));
+			ref_vel = m_ref_v;
+			if(fabs(next_car.m_id - (-2)) > std::numeric_limits<double>::epsilon()) {
+				if (fabs(a_car.m_s - next_car.m_s) < 50.0) {
+					ref_vel = vector_mag(next_car.m_vx, next_car.m_vy);
+				}
+			}
 			ref_theta = a_car.m_theta;
 			if(a_prev_path.m_x.size() < 2) {
 				
@@ -28,6 +125,7 @@ Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const
 				
 				hx.push_back(a_car.m_mapx);
 				hy.push_back(a_car.m_mapy);
+				cur_vel = vector_mag(a_car.m_vx, a_car.m_vy);
 			} else {
 				unsigned int len = a_prev_path.m_x.size();
 				double x = a_prev_path.m_x[len-1];
@@ -36,6 +134,7 @@ Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const
 				double x1 = a_prev_path.m_x[len-2];
 				double y1 = a_prev_path.m_y[len-2];
 				ref_theta = atan2(y-y1,x-x1);
+				cur_vel = distance(x,y,x1,y1) / m_dt;
 
 				hx.push_back(x1);
 				hy.push_back(y1);
@@ -45,8 +144,7 @@ Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const
 			}
 
 			double ref_s = a_car.m_s;
-			unsigned int lane = unsigned(a_car.m_d) / 4;
-			double ref_d = 2 + lane*4;
+			double ref_d = get_middle_of_lane(get_lane(a_car));
 			for(int i=1; i < 4; i++) {
 				auto xy = getXY(ref_s+(30*i), ref_d);
 				hx.push_back(xy[0]);
@@ -65,20 +163,14 @@ Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const
 	}
 
 	vector<double> xp,yp; // xpoints , ypoints in vehicle coordinates
+
 	// then convert these svals into xy using getXY,convert them to vehicle coordinates
-	cout << hx.size() << endl;
-	cout << hx[0] << "," <<  hx[1] <<endl;
+	AM am = AM(hx[1],hy[1],ref_theta);
 	for(int i=0; i<hx.size(); i++) {
-		// auto cartesian = getXY(svals[i], dvals[i]);
-		
 		// shift
-		double x = hx[i] - hx[0];
-		double y = hy[i] - hy[0];
-		// rotate
-		double xd = x*cos(ref_theta) - y*sin(ref_theta);
-		double yd = x*sin(ref_theta) + y*cos(ref_theta);
-		xp.push_back(xd);
-		yp.push_back(yd);
+		auto vehicle = am.convert({hx[i], hy[i]});
+		xp.push_back(vehicle[0]);
+		yp.push_back(vehicle[1]);
 	}
 
 	// then beyond what is already computed try to find remaining points from spline
@@ -90,30 +182,23 @@ Path Planner::_get_trajectory(Planner::CarState a_state, const Car& a_car, const
 	double target_y = s(target_x);
 	double target_dist = sqrt((target_x*target_x) + (target_y*target_y));
 	double x_add_on = 0.0;
-	double N = target_dist/(m_dt*ref_vel);
 
 	int remaining = next_path.remaining_points();
 	int len = next_path.m_x.size();
 	double ref_x, ref_y;
-	if(len > 0) {
-		ref_x = next_path.m_x[len-1];
-		ref_y = next_path.m_y[len-1];
-	} else {
-		ref_x = a_car.m_mapx;
-		ref_y = a_car.m_mapy;
-	}
+
 	for(int i=0; i < remaining; i++) {
+		cur_vel = _get_ref_velocity(cur_vel, ref_vel);
+		assert(cur_vel > 0);
+		assert(cur_vel <= m_ref_v);
+		double N = target_dist/(m_dt*cur_vel);
 		double x_point = x_add_on + (target_x/N);
 		double y_point = s(x_point);
 		x_add_on = x_point;
 
-		double x_ref = x_point;
-		double y_ref = y_point;
-		x_point = ref_x + (x_ref*cos(-ref_theta) - y_ref*sin(-ref_theta));
-		y_point = ref_y + (x_ref*sin(-ref_theta) + y_ref*cos(-ref_theta));
-
-		next_path.m_x.push_back(x_point);
-		next_path.m_y.push_back(y_point);
+		auto map = am.inverse_convert({x_point, y_point});
+		next_path.m_x.push_back(map[0]);
+		next_path.m_y.push_back(map[1]);
 	}
 
     return next_path;

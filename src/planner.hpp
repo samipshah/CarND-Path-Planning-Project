@@ -5,12 +5,12 @@
 #include <src/car.hpp>
 
 struct Planner {
-    int m_lanes = 3;
+    const int m_lanes = 3;
     const double m_prediction_time = 1; // 1 seconds
     const unsigned int m_num_points = 5; // calculate just 5 points on the trajectory use spline later to extrapolate 50
     const double m_ref_v = 20; // 50 mph = 50/2.24 = 22.32 m/s
-    double m_max_acc = 10;  // m/s2
-    double m_max_jerk = 10; // m/s3 
+    const double m_max_acc = 10;  // m/s2
+    const double m_max_jerk = 10; // m/s3 
     const double m_dt = 0.02; // time step in seconds
     
 
@@ -37,6 +37,7 @@ struct Planner {
 private:
     Path _get_trajectory(CarState state, const Car& car, const std::vector<Car>& other_cars, const Path& prev_path);
     std::vector<Planner::CarState> _possible_transitions(Planner::CarState current_state);
+    double _get_ref_velocity(double cur, double desired);
 };
 
 #endif /* PLANNER_HPP */

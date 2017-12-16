@@ -1,6 +1,8 @@
 #ifndef CAR_HPP
 #define CAR_HPP
 
+#include <math.h>
+
 struct Car {
     // int m_right_max;
     // int m_left_max;
@@ -27,6 +29,16 @@ struct Car {
 
     /* Constructor for current cars */
     Car(double a_id, double a_x, double a_y, double a_yaw) : m_id(a_id), m_mapx(a_x), m_mapy(a_y),m_theta(a_yaw) {}
+
+    Car() : m_id(-2) {
+    }
+
+    double current_speed() {
+        return sqrt((m_vx*m_vx) + (m_vy*m_vy));
+    };
+
+    bool same_lane(const Car& b);
+
 };
 
 #endif /* CAR_HPP */
