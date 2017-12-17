@@ -141,7 +141,6 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, do
     switch(next_state) {
         case CarState::KEEP_LANE: {
 			// set reference velocity
-
 			double ref_s = a_car.m_s;
 			double ref_d = get_middle_of_lane(get_lane(a_car));
 			for(int i=1; i < 4; i++) {
@@ -152,8 +151,10 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, do
 
         } break;
 		case CarState::TAKE_LEFT: {
+			max_v *= s_dampen_speed; // reduce speed while taking turn
 			// current , target lanes
 			if(c_lane <= 0) {
+				cout << c_lane << ", " << m_lanes << endl;
 				return next_path;
 			}
 			double t_lane = c_lane - 1;
@@ -162,14 +163,16 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, do
 			double ref_s = a_car.m_s;
 			double ref_d = get_middle_of_lane(t_lane);
 			for(int i=1; i < 4; i++) {
-				auto xy = getXY(ref_s+(30*i), ref_d);
+				auto xy = getXY(ref_s+(s_spline_step*i), ref_d);
 				hx.push_back(xy[0]);
 				hy.push_back(xy[1]);
 			}
 		} break;
 		case CarState::TAKE_RIGHT: {
+			max_v *= s_dampen_speed; // reduce speed while taking turn
 			// current , target lanes
 			if(c_lane >= (m_lanes-1)) {
+				cout << c_lane << ", " << m_lanes << endl;
 				return next_path;
 			}
 			double t_lane = c_lane + 1;
@@ -178,7 +181,7 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, do
 			double ref_s = a_car.m_s;
 			double ref_d = get_middle_of_lane(t_lane);
 			for(int i=1; i < 4; i++) {
-				auto xy = getXY(ref_s+(30*i), ref_d);
+				auto xy = getXY(ref_s+(s_spline_step*i), ref_d);
 				hx.push_back(xy[0]);
 				hy.push_back(xy[1]);
 			}
@@ -243,16 +246,16 @@ vector<Planner::CarState> Planner::_possible_transitions(Planner::CarState a_cur
     }
 
     if(a_current_state == CarState::TAKE_LEFT) {
-		if(prev_path.m_current_lane == prev_path.m_target_lane + 1) {
-			return {CarState::TAKE_LEFT};
-		}
+		// if(prev_path.m_current_lane == prev_path.m_target_lane + 1) {
+		// 	return {CarState::TAKE_LEFT};
+		// }
         return {CarState::KEEP_LANE, CarState::TAKE_LEFT};
     }
 
     if(a_current_state == CarState::TAKE_RIGHT) {
-		if(prev_path.m_current_lane == prev_path.m_target_lane - 1) {
-			return {CarState::TAKE_RIGHT};
-		}
+		// if(prev_path.m_current_lane == prev_path.m_target_lane - 1) {
+		// 	return {CarState::TAKE_RIGHT};
+		// }
         return {CarState::KEEP_LANE, CarState::TAKE_RIGHT};
     }
 

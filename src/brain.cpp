@@ -36,7 +36,6 @@ double Brain::_cost(std::pair<Planner::CarState,Path>& pair, const vector<Car>& 
         double y1 = a.m_y[Path::s_max_points-2];
         double theta = atan2(y1-y,x1-x);
         auto last = p.getFrenet(x, y, theta);
-        double clear_distance = a.m_current_velocity*0.02*50;
 
         // collision possibilities 
         for (Car c : other_cars) {
@@ -48,30 +47,51 @@ double Brain::_cost(std::pair<Planner::CarState,Path>& pair, const vector<Car>& 
                 }
 
                 // for cars in front of us
-                if(diff < a.m_current_velocity*Planner::s_dt*(Path::s_max_points/2)) {
+                if(diff < a.m_current_velocity*Planner::s_dt*(Path::s_max_points*.7)) {
                     cost += 10000.0;
                     cout << "front car too close " << cost << ",";
+                    break;
                 }
             }
 
             if(get_lane(c) == a.m_target_lane) {
-                
                 if (diff < 0.0) {
                     // for cars behind us make sure it is safe to take turn
-                    if(abs(diff) < c.current_speed()*Planner::s_dt*(Path::s_max_points/2)) {
-                        cost += 10000.0;
-                        cout << "cars behind in target too fast " << cost << ",";
+                    if(c.current_speed() < a.m_target_velocity) {
+                        if(abs(diff) < c.current_speed()*Planner::s_dt*(Path::s_max_points*.2)) {
+                            cost += 10000.0;
+                            cout << "cars behind in target lane too close" << cost << ",";
+                            break;
+                        }
+                        continue;
                     } else {
+                        if(abs(diff) < c.current_speed()*Planner::s_dt*(Path::s_max_points*2)) {
+                            cost += 10000.0;
+                            cout << "cars behind in target too fast " << cost << ",";
+                            break;
+                        } 
                         continue;
                     }
                 }
 
-                // cars in front of us in target len
-                if (diff < a.m_target_velocity*Planner::s_dt*(Path::s_max_points/2)) {
+                // faster car in front of us in target len 
+                if(c.current_speed() > a.m_target_velocity) {
+                    if(abs(diff) < a.m_target_velocity*Planner::s_dt*(Path::s_max_points*.5)) {
+                        cost += 10000.0;
+                        cout << "Not yet safe to change " << cost << ",";
+                        break;
+                    } 
+                    continue;
+                }
+
+                // slower car in front of us in target lane 
+                if (diff < a.m_target_velocity*Planner::s_dt*(Path::s_max_points*2)) {
                     cost += 10000.0;
                     cout << "front car in target too close " << cost << ",";
+                    break;
                 }
             }
+
             // forget about the cars in the other lanes
         }
     }
@@ -87,6 +107,19 @@ double Brain::_cost(std::pair<Planner::CarState,Path>& pair, const vector<Car>& 
     // lane change should have a cost , cast to double is done to avoid ambiguous function call
     cost += (abs(double(double(a.m_target_lane) - double(a.m_current_lane))))*s_weights[1];
     cout << cost << ",";
+
+    // heavy penalty for making a different decision when taking turn
+    if(m_current_state == Planner::CarState::TAKE_LEFT && pair.first != Planner::CarState::TAKE_LEFT) {
+		if(m_current_lane == m_target_lane + 1) {
+			cost += 10000.0;
+		}
+    }
+
+    if(m_current_state == Planner::CarState::TAKE_RIGHT && pair.first != Planner::CarState::TAKE_RIGHT) {
+		if(m_current_lane == m_target_lane - 1) {
+			cost += 10000.0;
+		}
+    }
 
     cout << endl;
     return cost;
@@ -111,8 +144,10 @@ Path Brain::next_path(Car& a_car, vector<Car>& other_cars, Planner& a_planner, c
     }
 
     // predict other cars position based on gaussian distribution around its location
-    double min_cost = 10000.0;
-    Path preferred_path = l_p;
+    double min_cost = 100000.0;
+    pair<Planner::CarState,Path> preferred;
+    // Path preferred_path = l_p;
+    // Planner::CarState preferred_state;
     cout << "----" << endl;
     for (auto pair : l_possible_paths) {
         Path a = pair.second;
@@ -120,14 +155,18 @@ Path Brain::next_path(Car& a_car, vector<Car>& other_cars, Planner& a_planner, c
         cout << a.m_x.size() << "," << cost << endl;
         if(min_cost > cost) {
             min_cost = cost;
-            preferred_path = a;
-            m_current_state = pair.first;
-            m_current_lane = a.m_current_lane;
-            m_target_lane = a.m_target_lane;
+            preferred = pair;
+            // preferred_path = a;
+            // preferred_state = pair.first;
         }
     }
 
+    // assign it for the next state
+    m_current_state = preferred.first;
+    m_current_lane = preferred.second.m_current_lane;
+    m_target_lane = preferred.second.m_target_lane;
+
     cout << "Preferred : " << unsigned(m_current_state) << endl;
 
-    return preferred_path;
+    return preferred.second;
 }

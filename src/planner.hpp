@@ -10,11 +10,12 @@ struct Planner {
     const int m_lanes = 3;
     const double m_prediction_time = 1; // 1 seconds
     const unsigned int m_num_points = 5; // calculate just 5 points on the trajectory use spline later to extrapolate 50
-    static constexpr const double s_ref_v = 20; // 50 mph = 50/2.24 = 22.32 m/s
+    static constexpr const double s_ref_v = 22; // 50 mph = 50/2.24 = 22.32 m/s
     const double m_max_acc = 10;  // m/s2
     const double m_max_jerk = 10; // m/s3 
     static constexpr const double s_dt = 0.02; // time step in seconds
     static constexpr const double s_spline_step = 40; // 40 m step
+    static constexpr const double s_dampen_speed = .75; // dampen while taking turn
     
 
     std::vector<double> m_maps_x;
