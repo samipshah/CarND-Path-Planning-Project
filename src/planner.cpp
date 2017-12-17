@@ -116,7 +116,6 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, do
 		hx.push_back(a_car.m_mapx);
 		hy.push_back(a_car.m_mapy);
 		cur_vel = vector_mag(a_car.m_vx, a_car.m_vy);
-		next_path.m_current_velocity = cur_vel;
 	} else {
 		unsigned int len = a_prev_path.m_x.size();
 		double x = a_prev_path.m_x[len-1];
@@ -126,7 +125,6 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, do
 		double y1 = a_prev_path.m_y[len-2];
 		ref_theta = atan2(y-y1,x-x1);
 		cur_vel = distance(x,y,x1,y1) / s_dt;
-		next_path.m_current_velocity = cur_vel;
 
 		hx.push_back(x1);
 		hy.push_back(y1);
@@ -138,6 +136,7 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, do
 	// set current and target lane
 	double c_lane = get_lane(a_car);
 	next_path.m_current_lane = c_lane;
+	next_path.m_current_velocity = vector_mag(a_car.m_vx, a_car.m_vy);
 	next_path.m_target_lane = c_lane;
     switch(next_state) {
         case CarState::KEEP_LANE: {
@@ -238,16 +237,22 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, do
     return next_path;
 }
 
-vector<Planner::CarState> Planner::_possible_transitions(Planner::CarState a_current_state) {
+vector<Planner::CarState> Planner::_possible_transitions(Planner::CarState a_current_state, const Path& prev_path) {
     if(a_current_state == CarState::KEEP_LANE) {
-        return {CarState::KEEP_LANE, CarState::TAKE_RIGHT, CarState::TAKE_LEFT};
+        return {CarState::KEEP_LANE, CarState::TAKE_LEFT, CarState::TAKE_RIGHT};
     }
 
     if(a_current_state == CarState::TAKE_LEFT) {
+		if(prev_path.m_current_lane == prev_path.m_target_lane + 1) {
+			return {CarState::TAKE_LEFT};
+		}
         return {CarState::KEEP_LANE, CarState::TAKE_LEFT};
     }
 
     if(a_current_state == CarState::TAKE_RIGHT) {
+		if(prev_path.m_current_lane == prev_path.m_target_lane - 1) {
+			return {CarState::TAKE_RIGHT};
+		}
         return {CarState::KEEP_LANE, CarState::TAKE_RIGHT};
     }
 
@@ -264,8 +269,9 @@ double _get_next_car_velocity(const Car& a_car, const vector<Car>& a_other_cars,
 	}
 	return max_v;
 }
+
 vector<std::pair<Planner::CarState,Path>> Planner::get_trajectories(Planner::CarState a_state, const Car& a_car, const vector<Car>& a_other_cars, const Path& a_prev_path) {
-    vector<CarState> l_states = _possible_transitions(a_state);
+    vector<CarState> l_states = _possible_transitions(a_state, a_prev_path);
     vector<std::pair<CarState,Path>> l_possible_paths;
 	
 	double max_v = _get_next_car_velocity(a_car, a_other_cars, get_lane(a_car));

@@ -39,7 +39,7 @@ struct Planner {
 
 private:
     Path _get_trajectory(CarState state, const Car& car, double max_v, const Path& prev_path);
-    std::vector<Planner::CarState> _possible_transitions(Planner::CarState current_state);
+    std::vector<Planner::CarState> _possible_transitions(Planner::CarState current_state, const Path& prev_path);
     double _get_ref_velocity(double cur, double desired);
 };
 

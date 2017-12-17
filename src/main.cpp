@@ -11,6 +11,7 @@
 #include "spline.h"
 #include <src/brain.hpp>
 #include <src/path.hpp>
+#include <src/road.hpp>
 
 using namespace std;
 
@@ -143,6 +144,10 @@ int main() {
 						// }
 						// cout << "cars:" << car_s << ",card:" << car_d << ",carx:" << car_x << ",cary:" << car_y << endl;
 						Path l_prev_path(previous_path_x, previous_path_y);
+						l_prev_path.m_current_lane = get_lane(l_car);
+						Car temp;
+						temp.m_d = end_path_d;
+						l_prev_path.m_target_lane = get_lane(temp);
 						// get current car object , and sensor fusion data , trajectory planner to
 						// brain finds out possible state transitions,
 						// using trajectory planner to find all trajectories
