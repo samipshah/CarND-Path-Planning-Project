@@ -182,7 +182,7 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, co
 			}
         } break;
 		case CarState::TAKE_LEFT: {
-			vel_mult = .9;
+			// vel_mult = .9;
 			// max_v *= s_dampen_speed; // reduce speed while taking turn
 			// current , target lanes
 			if(c_lane <= 0) {
@@ -202,7 +202,7 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, co
 			}
 		} break;
 		case CarState::TAKE_RIGHT: {
-			vel_mult = 1.1;
+			// vel_mult = 1.1;
 			// max_v *= s_dampen_speed; // reduce speed while taking turn
 			// current , target lanes
 			if(c_lane >= (m_lanes-1)) {
