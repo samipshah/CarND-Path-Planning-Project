@@ -44,7 +44,7 @@ struct Planner {
 private:
     Path _get_trajectory(CarState state, const Car& car, const Path& prev_path, const std::vector<Car>& a_other_cars);
     std::vector<Planner::CarState> _possible_transitions(Planner::CarState current_state, const Path& prev_path);
-    double _get_ref_velocity(double cur, double desired);
+    double _get_ref_velocity(double cur, double desired, double t_n);
 };
 
 #endif /* PLANNER_HPP */

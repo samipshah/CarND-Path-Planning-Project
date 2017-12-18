@@ -111,16 +111,16 @@ Car get_next_car_in_lane(const Car& a_car, const vector<Car>& a_other_cars, int 
 	return next_car;
 }
 
-double Planner::_get_ref_velocity(double cur, double desired) {
-	if(fabs(cur - desired) > m_max_acc*.9*s_dt) {
+double Planner::_get_ref_velocity(double cur, double desired, double t_n) {
+	double max_acc = (m_max_acc - t_n)*.9;
+	if(fabs(cur - desired) > max_acc*s_dt) {
 		if(desired > cur) {
-			cur += (m_max_acc*.8*s_dt); // 90% of acceleration
+			cur += (max_acc*s_dt); // 90% of acceleration
 		} else {
-			cur -= (m_max_acc*.8*s_dt);
+			cur -= (max_acc*s_dt);
 		}
 	}
 	
-
 	if (cur > s_ref_v) {
 		cur = s_ref_v;
 	}
@@ -254,10 +254,12 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, co
 	int len = next_path.m_x.size();
 	double ref_x, ref_y;
 
+
+	double prev_y_point = 0.0;
+	double t_n = 0.0;
 	for(int i=0; i < remaining; i++) {
 		double prev_vel = cur_vel;
-		
-		cur_vel = _get_ref_velocity(cur_vel, max_v);
+		cur_vel = _get_ref_velocity(cur_vel, max_v, t_n);
 		if(next_state != CarState::KEEP_LANE) {
 			if(cur_vel > prev_vel) {
 				cur_vel = prev_vel;
@@ -270,6 +272,8 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, co
 		double N = target_dist/(s_dt*cur_vel);
 		double x_point = x_add_on + (target_x/N);
 		double y_point = s(x_point);
+		t_n = (y_point - prev_y_point)/(s_dt*cur_vel);
+		prev_y_point = y_point;
 		x_add_on = x_point;
 
 		auto map = am.inverse_convert({x_point, y_point});

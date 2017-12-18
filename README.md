@@ -1,5 +1,19 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
+
+### Solution
+The solution I propose here has a planner, brain 
+Planner basically maintains a state machine of 3 states
+1. KEEP_LANE
+2. TAKE_LEFT
+3. TAKE_RIGHT
+
+KEEP LANE state can take all 3 states while TAKE LEFT and TAKE RIGHT states can take themselves and KEEP LANE.
+If KEEP LANE has maximum speed achievable then I do not explore other two states to improve slightly on performance. Path generation takes cue from walkthrough lecture and uses spline to generate path for all states possible to transition. This path generation also takes into consideration normal acceleration approximation from spline output and passes to \_get\_ref\_vel function so that maximum tangential acceleration used for calculating next x is reduced.
+
+Brain class tries to incorporate logic around choosing least cost trajectory. All logic related to collision avoidance, making decision between keeping lane , taking left or right depending on maximum velocity achievable in each lane, distance between next car and our car. Brain also predicts currently very naively next location of other cars based on their current location and number of previous points yet to traversed. We can probably use bayes algorithm to predict other cars to get the probability distribution rather than an exact location. However, for simplicity this simple solution is used. Some of the weights are chosen randomly however, best would have been to figure out perfect values applying machine learning to find the weights. However, did not seem easily doable in this project as for which we need to get the labeled data , which we do not have and generating it did not seem trivial.
+
+[Finish Line](img1.png)
    
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
