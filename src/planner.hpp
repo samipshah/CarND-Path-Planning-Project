@@ -5,6 +5,9 @@
 #include <src/car.hpp>
 
 Car get_next_car_in_lane(const Car& a_car, const std::vector<Car>& a_other_cars, int lane);
+double get_next_car_velocity(const Car& a_car, const std::vector<Car>& a_other_cars, unsigned int lane);
+std::vector<Car> get_nearby_cars_in_lanes(const Car& a_car, const std::vector<Car>& a_other_cars, int current_lane, int target_lane);
+std::vector<Car> get_cars_lane(const std::vector<Car>& a_other_cars, const Car& a_car);
 
 struct Planner {
     const int m_lanes = 3;
@@ -14,8 +17,8 @@ struct Planner {
     const double m_max_acc = 10;  // m/s2
     const double m_max_jerk = 10; // m/s3 
     static constexpr const double s_dt = 0.02; // time step in seconds
-    static constexpr const double s_spline_step = 40; // 40 m step
-    static constexpr const double s_dampen_speed = .75; // dampen while taking turn
+    static constexpr const double s_spline_step = 40; // 30 m step
+    static constexpr const double s_dampen_speed = .9; // dampen while taking turn
     
 
     std::vector<double> m_maps_x;
@@ -39,7 +42,7 @@ struct Planner {
     std::vector<double> getXY(double s, double d) const;
 
 private:
-    Path _get_trajectory(CarState state, const Car& car, double max_v, const Path& prev_path);
+    Path _get_trajectory(CarState state, const Car& car, const Path& prev_path, const std::vector<Car>& a_other_cars);
     std::vector<Planner::CarState> _possible_transitions(Planner::CarState current_state, const Path& prev_path);
     double _get_ref_velocity(double cur, double desired);
 };

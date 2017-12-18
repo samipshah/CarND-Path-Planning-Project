@@ -7,7 +7,7 @@ struct Car {
     // int m_left_max;
     // int m_throttle_max;
     // int m_throttle_min;
-    double m_id;
+    int m_id;
     double m_mapx;
     double m_mapy;
     double m_vx;
@@ -17,7 +17,7 @@ struct Car {
     double m_theta;
 
     /* Constructor for other cars */
-    Car(double a_id, double a_mapx, double a_mapy, double a_vx, double a_vy, double a_s, double a_d) 
+    Car(int a_id, double a_mapx, double a_mapy, double a_vx, double a_vy, double a_s, double a_d) 
     : m_id(a_id),
     m_mapx(a_mapx),
     m_mapy(a_mapy),
@@ -27,12 +27,16 @@ struct Car {
     m_d(a_d){}
 
     /* Constructor for current cars */
-    Car(double a_id, double a_x, double a_y, double a_yaw) : m_id(a_id), m_mapx(a_x), m_mapy(a_y),m_theta(a_yaw) {}
+    Car(int a_id, double a_x, double a_y, double a_yaw) : m_id(a_id), m_mapx(a_x), m_mapy(a_y),m_theta(a_yaw) {}
 
     Car() : m_id(-2) {
+
     }
 
-    double current_speed() {
+    bool initialized() {
+        return (m_id != -2);
+    }
+    double current_speed() const {
         return sqrt((m_vx*m_vx) + (m_vy*m_vy));
     };
 
