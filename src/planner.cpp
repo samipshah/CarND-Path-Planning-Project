@@ -113,11 +113,12 @@ Car get_next_car_in_lane(const Car& a_car, const vector<Car>& a_other_cars, int 
 
 double Planner::_get_ref_velocity(double cur, double desired, double t_n) {
 	double max_acc = (m_max_acc - t_n)*.9;
-	if(fabs(cur - desired) > max_acc*s_dt) {
+	double incr = max_acc*s_dt; // at
+	if(fabs(cur - desired) > incr) {
 		if(desired > cur) {
-			cur += (max_acc*s_dt); // 90% of acceleration
+			cur += incr; 
 		} else {
-			cur -= (max_acc*s_dt);
+			cur -= incr;
 		}
 	}
 	
@@ -166,6 +167,7 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, co
 	next_path.m_target_lane = c_lane;
 	next_path.m_current_velocity = vector_mag(a_car.m_vx, a_car.m_vy);
 	next_path.m_target_velocity = next_path.m_current_velocity;
+	double vel_mult = 1.0;
     switch(next_state) {
         case CarState::KEEP_LANE: {
 			// set reference velocity
@@ -178,9 +180,9 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, co
 				hx.push_back(xy[0]);
 				hy.push_back(xy[1]);
 			}
-
         } break;
 		case CarState::TAKE_LEFT: {
+			vel_mult = .9;
 			// max_v *= s_dampen_speed; // reduce speed while taking turn
 			// current , target lanes
 			if(c_lane <= 0) {
@@ -200,6 +202,7 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, co
 			}
 		} break;
 		case CarState::TAKE_RIGHT: {
+			vel_mult = 1.1;
 			// max_v *= s_dampen_speed; // reduce speed while taking turn
 			// current , target lanes
 			if(c_lane >= (m_lanes-1)) {
@@ -256,15 +259,18 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, co
 
 
 	double prev_y_point = 0.0;
+	double diff1 = 0.0, diff2 = 0.0;
 	double t_n = 0.0;
+	cout << "max velocity: " << max_v << endl;
 	for(int i=0; i < remaining; i++) {
 		double prev_vel = cur_vel;
-		cur_vel = _get_ref_velocity(cur_vel, max_v, t_n);
+		cur_vel = _get_ref_velocity(cur_vel, max_v*vel_mult, (diff1 - diff2)/s_dt);
 		if(next_state != CarState::KEEP_LANE) {
 			if(cur_vel > prev_vel) {
 				cur_vel = prev_vel;
 			}
 		}
+		
 		next_path.m_target_velocity = cur_vel;
 		assert(cur_vel > 0);
 		assert(cur_vel <= s_ref_v);
@@ -272,7 +278,9 @@ Path Planner::_get_trajectory(Planner::CarState next_state, const Car& a_car, co
 		double N = target_dist/(s_dt*cur_vel);
 		double x_point = x_add_on + (target_x/N);
 		double y_point = s(x_point);
-		t_n = (y_point - prev_y_point)/(s_dt*cur_vel);
+		diff2 = diff1;
+		diff1 = fabs(y_point - prev_y_point)/s_dt;
+
 		prev_y_point = y_point;
 		x_add_on = x_point;
 

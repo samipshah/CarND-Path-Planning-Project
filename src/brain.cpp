@@ -67,7 +67,7 @@ double Brain::_cost(std::pair<Planner::CarState,Path>& pair, const vector<Car>& 
             double diff = cars[2].m_s - temp.m_s;
             cost += 5000/(diff*diff);
             cout << "back target car (" << diff << "," << a.m_current_lane << "," << a.m_target_lane << ") " << cost << ",";
-            if(cars[2].current_speed() > a.m_target_velocity) {
+            if(fabs(diff) < 100 && cars[2].current_speed() > a.m_target_velocity) {
                 cost += (cars[2].current_speed() - a.m_target_velocity)*s_weights[3];
                 cout << "back target car speed " << cost;
             }
@@ -135,6 +135,7 @@ double Brain::_cost(std::pair<Planner::CarState,Path>& pair, const vector<Car>& 
 }
 
 Path Brain::next_path(Car& a_car, vector<Car>& other_cars, Planner& a_planner, const Path& prev_path) {
+    cout << "----" << endl;
     // predict next locations of other cars 
     unsigned int calculated = prev_path.length();
     for(Car& a : other_cars) {
@@ -155,7 +156,6 @@ Path Brain::next_path(Car& a_car, vector<Car>& other_cars, Planner& a_planner, c
     // predict other cars position based on gaussian distribution around its location
     double min_cost = 100000.0;
     pair<Planner::CarState,Path> preferred;
-    cout << "----" << endl;
     for (auto pair : l_possible_paths) {
         Path a = pair.second;
         double cost = _cost(pair, other_cars, a_planner, a_car);
@@ -173,5 +173,6 @@ Path Brain::next_path(Car& a_car, vector<Car>& other_cars, Planner& a_planner, c
     m_target_lane = preferred.second.m_target_lane;
 
     cout << "Preferred : " << unsigned(preferred.first) << endl;
+    cout << "----" << endl;
     return preferred.second;
 }
